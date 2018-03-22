@@ -1,0 +1,35 @@
+camera:
+  cameraMatrix:
+    - 1.28317374e+03
+    - 0.00000000e+00
+    - 8.26615060e+02
+    - 0.00000000e+00
+    - 1.28336978e+03
+    - 6.05818162e+02
+    - 0.00000000e+00
+    - 0.00000000e+00
+    - 1.00000000e+00
+  distCoeffs:
+    - 2.05252696e-01
+    - -5.20737914e-01
+    - -1.38118710e-04
+    - 1.15530765e-03
+    - 3.85818931e-01
+
+process:
+  blur: 5
+  morphKernel: 5
+  meanGrey: 200
+  winWidth: 51
+  winHeight: 11
+
+ArUco:
+  height: 14.2
+  id: 2
+
+colorMap:
+  areaHeight: 3
+  areaWidth: 16
+  areaY: -74.1
+  areaX: 8
+

@@ -1,0 +1,6 @@
+numpy
+yaml
+opencv
+scikit-image
+scikit-learn
+scipy

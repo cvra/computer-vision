@@ -1,0 +1,95 @@
+color_idx:
+  other: 0
+  red: 1 
+  blue: 2 
+  green: 3
+  yellow: 4 
+  orange: 5 
+  black: 6 
+  white: 7 
+
+colorsGroup:
+  orange:
+    - 'fa9a2c'
+    - 'fd9827'
+    - 'fc9226'
+    - 'f8a762'
+    - 'fdaf4e'
+    - 'fd913f'
+    - 'fb9757'
+    - 'e9ab27'
+    - 'fd983f'
+    - 'fda050'
+    - 'f7b03c'
+    - 'fd9727'
+    - 'fdae2f'
+    - 'e9ab27'
+    - 'fd9126'
+    - 'fdb22d'
+    - 'e8aa27'
+    - 'fd9126'
+    - 'fd9827'
+  green:
+    - '659c1f'
+    - '87ac5b'
+    - 'b3e539'
+    - 'badd64'
+    - 'aadb47'
+    - '779257'
+    - '76bd68'
+    - '5c931b'
+    - '5b8d5a'
+    - 'b2db54'
+    - 'ade33d'
+    - '00ff00'
+    - '6cb03e'
+    - '7a8b22'
+    - '53b939'
+    - '60a31d'
+  blue:
+    - '1178b0'
+    - '44afce'
+    - '0c4dc4'
+    - '3194c4'
+    - '447ee8'
+    - '407ed5'
+    - '4a81de'
+    - '0000ff'
+    - '0839b8'
+    - '0e65c1'
+    - '268cda'
+  yellow:
+    - 'fced65'
+    - 'feea56'
+    - 'f8eb75'
+    - 'ffff00'
+  red:
+    - 'fc4c27'
+    - 'f97660'
+    - 'fc5029'
+    - 'f85140'
+    - 'fc534c'
+    - 'ff0000'
+    - 'fc542a'
+    - 'fa6020'
+    - 'd9511a'
+    - 'fa5f20'
+    - 'fc4920'
+  white:
+    - 'ffffff'
+    - 'c6cac7'
+    - 'f5e9fe'
+    - 'f1feff'
+    - 'c6c6cd'
+  black:
+    - '000000'
+    - '000201'
+    - '0e0e16'
+    - '00020f'
+    - '010000'
+    - '24354c'
+    - '474a5e'
+    - '2c2230'
+    - '32122b'
+    - '504a62'
+    - '535672'
