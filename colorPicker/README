@@ -1,0 +1,5 @@
+# Color calibration tools
+
+This directory contains the tools used to generate the color dictionary for color detection.
+
+- `colorPickerApp` is a GUI that allow to walk through a set of images and pickup location of defined colors, including the neutral grey used for the white balance.
