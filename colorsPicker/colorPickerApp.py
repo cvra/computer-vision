@@ -27,11 +27,12 @@ class ImageColorSet():
             self.load()
         else:
             self.colorset = dict()
-            self.colorset['im_dim'] = list(MAX_SIZE)
+            self.colorset['IM_SIZE'] = list(MAX_SIZE)
+            self.colorset['Images'] = dict()
             for elem in self.img_list:
-                self.colorset[elem] = dict()
+                self.colorset['Images'][elem] = dict()
                 for colorname in COLOR_NAMES:
-                    self.colorset[elem][colorname] = list()
+                    self.colorset['Images'][elem][colorname] = list()
 
     def __getitem__(self, index):
         im = Image.open(join(self.path, self.img_list[index]))
@@ -43,8 +44,10 @@ class ImageColorSet():
         return len(self.img_list)
 
     def add_color_ref(self, index, colorname, x, y):
-        self.colorset[self.img_list[index]][colorname].append({'x': x, 'y': y})
+        self.colorset['Images'][self.img_list[index]
+                                ][colorname].append({'x': x, 'y': y})
         self.save()
+
 
     def save(self):
         with open(self.color_path, 'w') as f:
