@@ -28,8 +28,10 @@ ArUco:
   id: 2
 
 colorMap:
-  areaHeight: 3
-  areaWidth: 16
-  areaY: -74.1
-  areaX: 8
+  areaHeight: 12
+  areaWidth: 25
+  areaY: -85
+  areaX: -8
+  greyY: -85
+  greyX: 15
 
