@@ -7,6 +7,7 @@ from planReader.planReader import planReader
 
 camera = picamera.PiCamera()
 camera.vflip = True
+camera.hflip = True
 camera.resolution = (3280//2, 2464//2)
 
 plan = planReader(config_path='conf.yaml',
