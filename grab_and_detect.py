@@ -25,4 +25,3 @@ while(1):
     print('{}: Process Image'.format(strftime("%a, %d %b %Y %H:%M:%S", gmtime())))
     res = plan.process(im)
     print('{}: Output {}'.format(strftime("%a, %d %b %Y %H:%M:%S", gmtime()), res))
-    time.sleep(5)
