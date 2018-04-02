@@ -108,7 +108,7 @@ def find_class_center(im_label, idx2color, im=None):
 
     colors_blobs = list()
 
-    for label in [label for label in labels if label != 0 and label != 7]:
+    for label in [label for label in labels if label != 0 and label != 6]:
         mask = (im_label == label).astype(np.uint8)
         if not np.any(mask):
             break
@@ -166,7 +166,7 @@ class planReader():
         greypos, _ = cv2.projectPoints(self.grey_pts, rvecs, tvecs,
                                        self.cameraMatrix, self.distCoeffs)
         greypos = np.rint(greypos.squeeze()).astype(np.int)
-        grey = pick_color(im, greypos[1], greypos[0], 3)
+        grey = pick_color(im, greypos[0], greypos[1], 3)
 
         im_proc1 = crop_on_color_map(im, pts, self.conf['process']['winWidth'],
                                      self.conf['process']['winHeight'])
