@@ -12,7 +12,9 @@ from sklearn import mixture
 from skimage import data, img_as_float
 from skimage import exposure
 
+from .colorsUtils import norm_colors, improve_colors, pick_color
 from .colorsSegm import Colors
+from .drawingUtils import draw_points, lut
 
 
 def load_config(conf_path, colors_path):
@@ -32,20 +34,12 @@ def load_config(conf_path, colors_path):
     return conf, conf_colors
 
 
-def readImage(path):
-    im = cv2.imread(path, cv2.IMREAD_COLOR)
-    im = cv2.resize(im, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
-    im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-    return im
-
-
-def detectAruco(im, aruco_dict, conf, cameraMatrix, distCoeffs):
+def detect_aruco(im, aruco_dict, conf, cameraMatrix, distCoeffs):
     aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
     param = aruco.DetectorParameters_create()
 
     corners, ids, _ = aruco.detectMarkers(im, aruco_dict, parameters=param)
 
-    # This is ugly
     sel_id = np.argwhere(ids == conf['id'])
     if sel_id.shape[0]:
         idx = sel_id[0][0]
@@ -61,14 +55,7 @@ def detectAruco(im, aruco_dict, conf, cameraMatrix, distCoeffs):
     return corners, rvecs, tvecs
 
 
-def drawAruco(im, corners, rvecs, tvecs, cameraMatrix, distCoeffs):
-    im = aruco.drawDetectedMarkers(im.copy(), corners)
-    aruco.drawAxis(im, cameraMatrix, distCoeffs,
-                   rvecs[0, ...], tvecs[0, ...], 20)
-    return im
-
-
-def keepColor(im, model):
+def keep_color(im, model):
     out = np.zeros(im.shape[:2], dtype=np.uint8)
 
     for i in range(im.shape[0]):
@@ -80,50 +67,13 @@ def keepColor(im, model):
     return out
 
 
-def cropOnColorMap(im, pts, width, height):
+def crop_on_color_map(im, pts, width, height):
     pts_proj = np.float32([[width, 0], [0, 0], [0, height], [width, height]])
 
     M = cv2.getPerspectiveTransform(pts.astype(np.float32), pts_proj)
 
     dst = cv2.warpPerspective(im, M, (width, height))
     return dst
-
-
-def color_define_curve(mean, comp):
-    x = np.array([0, comp / 255, 1])
-    y = np.array([1, mean / comp, 1])
-    f = interpolate.interp1d(x, y, kind='quadratic')
-    return f
-
-
-def color_corr_factor(val, f):
-    return f(val / 255)
-
-
-def normColor(im, mean_grey):
-    im = im.copy()
-
-    grey = np.mean(im[:, :4, :], axis=(0, 1))
-
-    curve_r = color_define_curve(np.mean(grey), grey[0])
-    curve_g = color_define_curve(np.mean(grey), grey[1])
-    curve_b = color_define_curve(np.mean(grey), grey[2])
-
-    im[:, :, 0] *= color_corr_factor(im[:, :, 0], curve_r)
-    im[:, :, 1] *= color_corr_factor(im[:, :, 1], curve_g)
-    im[:, :, 2] *= color_corr_factor(im[:, :, 2], curve_b)
-
-    grey = np.mean(im[:, :4, :], axis=(0, 1))
-
-    mean_grey = 200  # np.mean(grey)
-
-    im /= grey
-    im *= mean_grey
-
-    im[im > 255] = 255
-    im = np.rint(im).astype(np.uint8)
-
-    return im
 
 
 def clean_label(im, morph_kernel):
@@ -175,41 +125,10 @@ def find_class_center(im_label, idx2color, im=None):
     return colors_blobs
 
 
-def lut(im):
-    im = np.repeat(im[:, :, np.newaxis], 3, axis=2)
-
-    lut = np.zeros((256, 1, 3), dtype=np.uint8)
-    lut[0, 0, :] = np.array([255, 255, 255], dtype=np.uint8)  # other
-    lut[1, 0, :] = np.array([255, 0, 0], dtype=np.uint8)      # red
-    lut[2, 0, :] = np.array([0, 0, 255], dtype=np.uint8)      # blue
-    lut[3, 0, :] = np.array([0, 255, 0], dtype=np.uint8)      # green
-    lut[4, 0, :] = np.array([255, 255, 0], dtype=np.uint8)    # yellow
-    lut[5, 0, :] = np.array([255, 127, 0], dtype=np.uint8)    # orange
-    lut[6, 0, :] = np.array([0, 0, 0], dtype=np.uint8)        # black
-    lut[7, 0, :] = np.array([255, 255, 255], dtype=np.uint8)  # white
-
-    cv2.LUT(im, lut, im)
-    return im
-
-
-def improve_colors(im, mean_grey):
-    im = im.copy()
-
-    p2, p98 = np.percentile(im, (2, 98))
-    im = exposure.rescale_intensity(
-        im, in_range=(p2, p98))
-    im = normColor(im.astype(np.float), mean_grey)
-
-    im_hsv = cv2.cvtColor(im, cv2.COLOR_RGB2HLS).astype(np.float)
-    im_hsv[:, :, 2] *= 130 / np.mean(im_hsv[:, :, 2])
-    im_hsv[im_hsv > 255] = 255
-    im = cv2.cvtColor(im_hsv.astype(np.uint8), cv2.COLOR_HLS2RGB)
-
-    return im
-
-
 class planReader():
-    def __init__(self, config_path='conf.yaml', config_color='colors.yaml'):
+    def __init__(self, config_path='conf.yaml', config_color='colors.yaml', debug=False):
+        self.debug = debug
+
         # load config
         self.conf, self.conf_colors = load_config(config_path, config_color)
         self.cameraMatrix = self.conf['camera']['cameraMatrix']
@@ -223,13 +142,18 @@ class planReader():
         areaX = self.conf['colorMap']['areaX']
         areaWidth = self.conf['colorMap']['areaWidth']
 
-        self.points = np.array([[areaY + areaHeight / 2, areaX + areaWidth / 2, 0],
-                                [areaY + areaHeight / 2, areaX - areaWidth / 2, 0],
-                                [areaY - areaHeight / 2, areaX - areaWidth / 2, 0],
-                                [areaY - areaHeight / 2, areaX + areaWidth / 2, 0]])
+        self.grey_pts = np.array([[self.conf['colorMap']['greyY'],
+                                   self.conf['colorMap']['greyX'],
+                                   0]], dtype=np.float)
+
+        self.points = np.array([[areaY - areaHeight / 2, areaX - areaWidth / 2, 0],
+                                [areaY - areaHeight / 2, areaX + areaWidth / 2, 0],
+                                [areaY + areaHeight / 2, areaX + areaWidth / 2, 0],
+                                [areaY + areaHeight / 2, areaX - areaWidth / 2, 0]],
+                               dtype=np.float)
 
     def process(self, im):
-        corners, rvecs, tvecs = detectAruco(
+        corners, rvecs, tvecs = detect_aruco(
             im, aruco.DICT_6X6_250,
             self.conf['ArUco'],
             self.cameraMatrix,
@@ -239,30 +163,45 @@ class planReader():
                                    self.cameraMatrix, self.distCoeffs)
         pts = np.rint(pts.squeeze()).astype(np.int)
 
-        im_proc1 = cropOnColorMap(im, pts, self.conf['process']['winWidth'],
-                                  self.conf['process']['winHeight'])
-        im_proc2 = cv2.GaussianBlur(im_proc1, (self.conf['process']['blur'],
-                                               self.conf['process']['blur']),0)
+        greypos, _ = cv2.projectPoints(self.grey_pts, rvecs, tvecs,
+                                       self.cameraMatrix, self.distCoeffs)
+        greypos = np.rint(greypos.squeeze()).astype(np.int)
+        grey = pick_color(im, greypos[1], greypos[0], 3)
 
-        im_proc3 = normColor(im_proc2.astype(np.float),
-                             self.conf['process']['meanGrey'])
+        im_proc1 = crop_on_color_map(im, pts, self.conf['process']['winWidth'],
+                                     self.conf['process']['winHeight'])
+        im_proc2 = cv2.GaussianBlur(im_proc1, (self.conf['process']['blur'],
+                                               self.conf['process']['blur']), 0)
+        im_proc3 = norm_colors(im_proc2.astype(np.float),
+                               grey)
 
         # Adaptive Equalization
         # Contrast stretching
-        im_proc4 = improve_colors(im_proc3, self.conf['process']['meanGrey'])
-
-        im_proc5 = keepColor(im_proc4, self.colors_util.model)
+        im_proc4 = improve_colors(im_proc3)
+        im_proc5 = keep_color(im_proc4, self.colors_util.model)
         im_proc6 = clean_label(im_proc5, self.conf['process']['morphKernel'])
         im_proc7 = clean_label(im_proc6, self.conf['process']['morphKernel'])
         im_proc8 = lut(im_proc7)
 
-        color_blobs = find_class_center(im_proc7, self.colors_util.idx2color, 
+        if self.debug:
+            plt.imshow(draw_points(im, pts))
+            plt.show()
+
+            plt.imshow(draw_points(im, greypos[np.newaxis, :]))
+            plt.show()
+
+            plt.imshow(np.vstack([im_proc1, im_proc2, im_proc3,
+                                  im_proc4]))
+            plt.show()
+
+            plt.imshow(np.vstack([im_proc5, im_proc6, im_proc7]))
+            plt.show()
+
+            plt.imshow(im_proc8)
+            plt.show()
+
+        color_blobs = find_class_center(im_proc7, self.colors_util.idx2color,
                                         im_proc8)
         colors = find_colors(color_blobs)
 
         return colors
-
-
-#for path in glob.glob('../images/im*.jpg'):
-#    im = readImage(path)
-#    print(process_image(im))

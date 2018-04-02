@@ -40,9 +40,11 @@ def extract_colors(path, filename, im_size, colors, window_size):
     x_grey = greypos['x']
     y_grey = greypos['y']
 
+    grey = pick_color(im, x_grey, y_grey, window_size)
+
     im_opt = im.copy()
-    im_opt = norm_colors(im.astype(np.float), x_grey, y_grey, window_size)
-    im_opt = improve_colors(im_opt, x_grey, y_grey, window_size)
+    im_opt = norm_colors(im.astype(np.float), grey)
+    im_opt = improve_colors(im_opt)
 
     for colorname, colorlist in colors.items():
         for sample in colorlist:
@@ -94,8 +96,15 @@ def main():
                                     im_size, colors, WINDOW_SIZE)
             colorset = mergedict(colors, colorset)
 
+    out_dict = dict()
+    out_dict['colorsGroup'] = colorset
+
+    color_idx = {'Other': 0, 'Blue': 1, 'Green': 2,
+                 'Yellow': 3, 'Orange': 4, 'Black': 5, 'Grey': 6}
+    out_dict['color_idx'] = color_idx
+
     with open(args.output, 'w') as f:
-        yaml.dump(colorset, f, default_flow_style=False)
+        yaml.dump(out_dict, f, default_flow_style=False)
 
 if __name__ == "__main__":
     main()

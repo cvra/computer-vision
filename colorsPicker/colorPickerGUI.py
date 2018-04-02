@@ -69,7 +69,7 @@ class Ui_MainWindow(object):
         self.cbxColor.setItemText(2, _translate("MainWindow", "Yellow"))
         self.cbxColor.setItemText(3, _translate("MainWindow", "Black"))
         self.cbxColor.setItemText(4, _translate("MainWindow", "Green"))
-        self.cbxColor.setItemText(5, _translate("MainWindow", "Red"))
+        self.cbxColor.setItemText(5, _translate("MainWindow", "Orange"))
         self.btnBack.setText(_translate("MainWindow", "<"))
         self.btnNext.setText(_translate("MainWindow", ">"))
 

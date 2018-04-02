@@ -21,9 +21,7 @@ class Colors():
         labels = list()
 
         for colorname, colors in self._colors_group.items():
-            for hexcolor in colors:
-                r, g, b = tuple(int(hexcolor[i:i+2], 16) for i in (0, 2, 4))
-
+            for (r, g, b) in colors:
                 label = self._color_idx[colorname]
 
                 samples.append([r, g, b])

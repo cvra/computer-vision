@@ -22,13 +22,12 @@ def pick_color(im, x, y, window_size):
     return np.mean(im[y1:y2, x1:x2], axis=(0, 1))
 
 
-def improve_colors(im, x, y, window_size):
+def improve_colors(im):
     im = im.copy()
 
     p2, p98 = np.percentile(im, (2, 98))
     im = exposure.rescale_intensity(
         im, in_range=(p2, p98))
-    im = norm_colors(im.astype(np.float), x, y, window_size)
 
     im_hsv = cv2.cvtColor(im, cv2.COLOR_RGB2HLS).astype(np.float)
     im_hsv[:, :, 2] *= 130 / np.mean(im_hsv[:, :, 2])
@@ -38,10 +37,8 @@ def improve_colors(im, x, y, window_size):
     return im
 
 
-def norm_colors(im, x, y, window_size):
+def norm_colors(im, grey):
     im = im.copy()
-
-    grey = pick_color(im, x, y, window_size)
 
     curve_r = _color_define_curve(np.mean(grey), grey[0])
     curve_g = _color_define_curve(np.mean(grey), grey[1])
@@ -50,9 +47,12 @@ def norm_colors(im, x, y, window_size):
     im[:, :, 0] *= _color_corr_factor(im[:, :, 0], curve_r)
     im[:, :, 1] *= _color_corr_factor(im[:, :, 1], curve_g)
     im[:, :, 2] *= _color_corr_factor(im[:, :, 2], curve_b)
+    
+    grey[0] *= _color_corr_factor(grey[0], curve_r)
+    grey[1] *= _color_corr_factor(grey[1], curve_g)
+    grey[2] *= _color_corr_factor(grey[2], curve_b)
 
-    grey = pick_color(im, x, y, window_size)
-    mean_grey = 200  # np.mean(grey)
+    mean_grey = 200
 
     im /= grey
     im *= mean_grey
