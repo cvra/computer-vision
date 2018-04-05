@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 plan = planReader(config_path='conf.yaml',
                   config_color='colors.yaml', debug=False)
 
-ser = serial.Serial('/dev/serial0')
+ser = serial.Serial('/dev/serial0', 19200)
 logging.info('Serial port {} ready for streaming results'.format(ser.name))
 
 camera = picamera.PiCamera()
