@@ -180,6 +180,9 @@ class planReader():
             self.cameraMatrix,
             self.distCoeffs)
 
+        if corners is None:
+            return []
+
         pts, _ = cv2.projectPoints(self.points, rvecs, tvecs,
                                    self.cameraMatrix, self.distCoeffs)
         pts = np.rint(pts.squeeze()).astype(np.int)
