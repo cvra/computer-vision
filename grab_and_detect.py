@@ -9,6 +9,8 @@ import serial
 from error_correction import error_correction
 from planReader.planReader import planReader
 
+VALID_COLORS = {'Black':'K', 'Yellow':'Y', 'Orange':'O', 'Blue':'B', 'Green':'G'}
+
 logging.basicConfig(level=logging.INFO)
 
 plan = planReader(config_path='conf.yaml',
@@ -42,7 +44,7 @@ while(True):
             sequences, distance = error_correction(color_plan)
             logging.info('{}: Closest valid sequence {} that was {} color away from prediction'.format(strftime("%a, %d %b %Y %H:%M:%S", gmtime()), sequences[0], distance))
 
-            compact_res = ''.join(color[0] for color in sequences[0]) + '\n'
+            compact_res = ''.join(VALID_COLORS[color] for color in sequences[0]) + '\n'
             ser.write(compact_res.encode())
             logging.info('UART stream: {}'.format(compact_res))
         else:
