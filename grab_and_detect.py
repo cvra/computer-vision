@@ -9,6 +9,8 @@ import serial
 from error_correction import error_correction
 from planReader.planReader import planReader
 
+logging.basicConfig(level=logging.INFO)
+
 plan = planReader(config_path='conf.yaml',
                   config_color='colors.yaml', debug=False)
 
