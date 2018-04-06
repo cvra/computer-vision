@@ -37,3 +37,10 @@ Static IP set following https://learn.adafruit.com/turning-your-raspberry-pi-zer
 Remember to set ip in the DHCP file, not /etc/network/interfaces, otherwise the DHCP server won't start and the hotspot won't work simultaneously.
 
 So the pi can be accessed via USB, at static IP 192.168.7.2
+
+## Configure the service
+
+```
+sudo cp detect.service /etc/systemd/system/
+sudo systemctl enable detect.service
+```
