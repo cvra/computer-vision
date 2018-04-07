@@ -1,8 +1,8 @@
-import time
+from time import gmtime, strftime
+
 import picamera
 import picamera.array
 
-from time import gmtime, strftime
 from planReader.planReader import planReader
 
 
