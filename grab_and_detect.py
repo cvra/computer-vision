@@ -53,8 +53,6 @@ def main():
             stream = picamera.array.PiRGBArray(camera)
             logging.info('{}: Grab Image'.format(time_str()))
             camera.capture(stream, format='rgb', use_video_port=True)
-
-            logging.info('{}: Load Image'.format(time_str()))
             im = stream.array
 
             logging.info('{}: Process Image'.format(time_str()))
