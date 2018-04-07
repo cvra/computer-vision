@@ -1,4 +1,6 @@
+import argparse
 import logging
+import os
 import sys
 from time import gmtime, strftime
 
@@ -14,13 +16,24 @@ def time_str():
 
 VALID_COLORS = {'Black':'K', 'Yellow':'Y', 'Orange':'O', 'Blue':'B', 'Green':'G'}
 
-logging.basicConfig(level=logging.INFO)
+def parse_arguments():
+    parser = argparse.ArgumentParser(description=__doc__)
+
+    parser.add_argument('--port', '-p', help='Serial port the results are streamed to', default='/dev/serial0')
+    parser.add_argument('--baudrate', '-b', type=int, help='Baudrate over serial port', default=19200)
+    parser.add_argument('--logfile', '-l', help='Output log file')
+
+    return parser.parse_args()
 
 def main():
-    plan = planReader(config_path='conf.yaml',
-                      config_color='colors.yaml', debug=False)
+    args = parse_arguments()
 
-    ser = serial.Serial('/dev/serial0', 19200)
+    if args.logfile:
+        logging.basicConfig(filename=args.logfile, level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    ser = serial.Serial(args.port, args.baudrate)
     logging.info('Serial port {} ready for streaming results'.format(ser.name))
 
     camera = picamera.PiCamera()
@@ -28,8 +41,13 @@ def main():
     camera.hflip = True
     camera.resolution = (3280//2, 2464//2)
 
-    logging.info('{}: Start'.format(time_str()))
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    config_file = os.path.join(current_dir, 'conf.yaml')
+    colors_file = os.path.join(current_dir, 'colors.yaml')
+    plan = planReader(config_path=config_file,
+                      config_color=colors_file, debug=False)
 
+    logging.info('{}: Start'.format(time_str()))
     while(True):
         try:
             stream = picamera.array.PiRGBArray(camera)
