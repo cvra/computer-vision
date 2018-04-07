@@ -1,12 +1,13 @@
-import matplotlib.pyplot as plt
+import glob
+import yaml
 import numpy as np
+import scipy.ndimage
+import matplotlib.pyplot as plt
+
 import cv2
 import cv2.aruco as aruco
-import glob
-import os
-import yaml
-import scipy.ndimage
 
+from os.path import join
 from scipy import interpolate
 from sklearn import mixture
 from skimage import data, img_as_float
@@ -125,9 +126,29 @@ def find_class_center(im_label, idx2color, im=None):
     return colors_blobs
 
 
+def debug_writefiles(path, im,  pts, greypos,
+                     im_proc1, im_proc2, im_proc3,
+                     im_proc4, im_proc5, im_proc6,
+                     im_proc7, im_proc8):
+
+    cv2.imwrite(join(path, 'out1.png'), cv2.cvtColor(
+        draw_points(im, pts), cv2.COLOR_RGB2BGR))
+    cv2.imwrite(join(path, 'out2.png'), cv2.cvtColor(draw_points(
+        im, greypos[np.newaxis, :]), cv2.COLOR_RGB2BGR))
+    cv2.imwrite(join(path, 'out3.png'), cv2.cvtColor(np.vstack([im_proc1, im_proc2,
+                                                                im_proc3, im_proc4]),
+                                                     cv2.COLOR_RGB2BGR))
+    cv2.imwrite(join(path, 'out4.png'), np.vstack(
+        [im_proc5, im_proc6, im_proc7]))
+    cv2.imwrite(join(path, 'out5.png'), cv2.cvtColor(
+        im_proc8, cv2.COLOR_RGB2BGR))
+
+
 class planReader():
-    def __init__(self, config_path='conf.yaml', config_color='colors.yaml', debug=False):
+    def __init__(self, config_path='conf.yaml', config_color='colors.yaml',
+                 debug=False, debugpath='./'):
         self.debug = debug
+        self.debugpath = debugpath
 
         # load config
         self.conf, self.conf_colors = load_config(config_path, config_color)
@@ -184,21 +205,10 @@ class planReader():
         im_proc8 = lut(im_proc7)
 
         if self.debug:
-            plt.imshow(draw_points(im, pts))
-            plt.show()
-
-            plt.imshow(draw_points(im, greypos[np.newaxis, :]))
-            plt.show()
-
-            plt.imshow(np.vstack([im_proc1, im_proc2, im_proc3,
-                                  im_proc4]))
-            plt.show()
-
-            plt.imshow(np.vstack([im_proc5, im_proc6, im_proc7]))
-            plt.show()
-
-            plt.imshow(im_proc8)
-            plt.show()
+            debug_writefiles(self.debugpath, im,  pts, greypos,
+                             im_proc1, im_proc2, im_proc3,
+                             im_proc4, im_proc5, im_proc6,
+                             im_proc7, im_proc8)
 
         color_blobs = find_class_center(im_proc7, self.colors_util.idx2color,
                                         im_proc8)
