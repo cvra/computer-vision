@@ -1,16 +1,12 @@
 [Unit]
 Description=Eurobot 2018 color detection service
+After=syslog.target network.target
 
 [Service]
 Type=simple
-
 User=pi
-
-ExecStartPre=source activate cvra
 ExecStart=/home/pi/berryconda3/envs/cvra/bin/python /home/pi/computer-vision/grab_and_detect.py --logfile /home/pi/detect_log.txt
-ExecStop=echo 'Exiting color detection service'
-
 Restart=on-failure
 
-# Configures the time to wait before service is stopped forcefully.
-TimeoutStopSec=500
+[Install]
+WantedBy=multi-user.target
