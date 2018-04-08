@@ -1,136 +1,38 @@
-import glob
 import yaml
 import numpy as np
-import scipy.ndimage
-import matplotlib.pyplot as plt
 
 import cv2
 import cv2.aruco as aruco
 
 from os.path import join
-from scipy import interpolate
-from sklearn import mixture
-from skimage import data, img_as_float
-from skimage import exposure
 
-from .colorsUtils import norm_colors, improve_colors, pick_color
+from .colorsUtils import norm_colors, \
+                         improve_colors, \
+                         pick_color, \
+                         crop_on_color_map
 from .colorsSegm import Colors
 from .drawingUtils import draw_points, lut
+from .drawingUtils import draw_points, lut
+
+from .colorsLabel import keep_color, \
+                         clean_label, \
+                         find_colors, \
+                         find_class_center
+from enum import Enum
 
 
-def load_config(conf_path, colors_path):
-    with open(conf_path, 'r') as stream:
-        conf = yaml.load(stream)
-
-    with open(colors_path, 'r') as stream:
-        conf_colors = yaml.load(stream)
-
-    cam_arr = np.array(conf['camera']['cameraMatrix'])
-    cam_arr = cam_arr.reshape(3, 3)
-    conf['camera']['cameraMatrix'] = cam_arr
-
-    cam_dist = np.array(conf['camera']['distCoeffs'])
-    conf['camera']['distCoeffs'] = cam_dist
-
-    return conf, conf_colors
-
-
-def detect_aruco(im, aruco_dict, conf, cameraMatrix, distCoeffs):
-    aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
-    param = aruco.DetectorParameters_create()
-
-    corners, ids, _ = aruco.detectMarkers(im, aruco_dict, parameters=param)
-
-    sel_id = np.argwhere(ids == conf['id'])
-    if sel_id.shape[0]:
-        idx = sel_id[0][0]
-
-        corners = [corners[idx]]
-        rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners,
-                                                              conf['height'],
-                                                              cameraMatrix,
-                                                              distCoeffs)
-    else:
-        corners, rvecs, tvecs = None, None, None
-
-    return corners, rvecs, tvecs
-
-
-def keep_color(im, model):
-    out = np.zeros(im.shape[:2], dtype=np.uint8)
-
-    for i in range(im.shape[0]):
-        line = im[i, :, :].astype(np.float32)
-        results = model.predict(line)
-
-        out[i, :] = results
-
-    return out
-
-
-def crop_on_color_map(im, pts, width, height):
-    pts_proj = np.float32([[width, 0], [0, 0], [0, height], [width, height]])
-
-    M = cv2.getPerspectiveTransform(pts.astype(np.float32), pts_proj)
-
-    dst = cv2.warpPerspective(im, M, (width, height))
-    return dst
-
-
-def clean_label(im, morph_kernel):
-    im = im.copy()
-
-    labels = np.unique(im)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,
-                                       (morph_kernel, morph_kernel))
-    new_im = np.zeros(im.shape, dtype=np.uint8)
-
-    for label in labels:
-        mask = (im == label).astype(np.uint8)
-
-        mask_closed = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        mask_opened = cv2.morphologyEx(mask_closed, cv2.MORPH_OPEN, kernel)
-
-        new_im[mask_opened == 1] = label
-
-    return new_im
-
-
-def find_colors(color_blobs):
-    candidates = color_blobs[-3:]
-    candidates.sort(key=lambda x: x['center'][1])
-
-    colors = [item['color'] for item in candidates]
-    return colors
-
-
-def find_class_center(im_label, idx2color, im=None):
-    labels = np.unique(im_label)
-
-    colors_blobs = list()
-
-    for label in [label for label in labels if label != 0 and label != 6]:
-        mask = (im_label == label).astype(np.uint8)
-        if not np.any(mask):
-            break
-
-        X = np.vstack(np.where(mask == 1)).T.astype(np.float)
-        gmm = mixture.GaussianMixture(
-            n_components=1, covariance_type='diag', max_iter=100,).fit(X)
-
-        if im is not None:
-            colors_blobs.append({'color': idx2color[label], 'size': np.sum(
-                mask), 'center': gmm.means_.squeeze()})
-
-    colors_blobs.sort(key=lambda x: x['size'])
-    return colors_blobs
+class PlayingSide(Enum):
+    GREEN = -1
+    ORANGE = 1
 
 
 def debug_writefiles(path, im,  pts, greypos,
                      im_proc1, im_proc2, im_proc3,
                      im_proc4, im_proc5, im_proc6,
-                     im_proc7, im_proc8):
+                     im_proc7, im_proc8, im_aruco):
 
+    cv2.imwrite(join(path, 'out_aruco.png'), cv2.cvtColor(
+        im_aruco, cv2.COLOR_RGB2BGR))
     cv2.imwrite(join(path, 'out1.png'), cv2.cvtColor(
         draw_points(im, pts), cv2.COLOR_RGB2BGR))
     cv2.imwrite(join(path, 'out2.png'), cv2.cvtColor(draw_points(
@@ -150,44 +52,107 @@ class planReader():
         self.debug = debug
         self.debugpath = debugpath
 
+        self.playing_side = None
+
         # load config
-        self.conf, self.conf_colors = load_config(config_path, config_color)
+        self.conf, self.conf_colors = self.load_config(
+            config_path, config_color)
         self.cameraMatrix = self.conf['camera']['cameraMatrix']
         self.distCoeffs = self.conf['camera']['distCoeffs']
+
+        self.aruco_id = self.conf['ArUco']['id']
+        self.aruco_dict = self.conf['ArUco']['dict']
+        self.aruco_height = self.conf['ArUco']['height']
 
         self.colors_util = Colors(self.conf_colors['colorsGroup'],
                                   self.conf_colors['color_idx'])
 
-        areaY = self.conf['colorMap']['areaY']
+    def get_colormap_pts(self):
+        if self.playing_side == PlayingSide.GREEN:
+            areaY = self.conf['colorMap']['greenSide']['areaY']
+            areaX = self.conf['colorMap']['greenSide']['areaX']
+        else:
+            areaY = self.conf['colorMap']['orangeSide']['areaY']
+            areaX = self.conf['colorMap']['orangeSide']['areaX']
+
         areaHeight = self.conf['colorMap']['areaHeight']
-        areaX = self.conf['colorMap']['areaX']
         areaWidth = self.conf['colorMap']['areaWidth']
 
-        self.grey_pts = np.array([[self.conf['colorMap']['greyY'],
-                                   self.conf['colorMap']['greyX'],
-                                   0]], dtype=np.float)
+        return np.array([[areaY - areaHeight / 2, areaX - areaWidth / 2, 0],
+                         [areaY - areaHeight / 2, areaX + areaWidth / 2, 0],
+                         [areaY + areaHeight / 2, areaX + areaWidth / 2, 0],
+                         [areaY + areaHeight / 2, areaX - areaWidth / 2, 0]],
+                        dtype=np.float)
 
-        self.points = np.array([[areaY - areaHeight / 2, areaX - areaWidth / 2, 0],
-                                [areaY - areaHeight / 2, areaX + areaWidth / 2, 0],
-                                [areaY + areaHeight / 2, areaX + areaWidth / 2, 0],
-                                [areaY + areaHeight / 2, areaX - areaWidth / 2, 0]],
-                               dtype=np.float)
+    def get_grey_pts(self):
+        if self.playing_side == PlayingSide.GREEN:
+            grey_pos = np.array([[self.conf['colorMap']['greenSide']['greyY'],
+                                  self.conf['colorMap']['greenSide']['greyX'],
+                                  0]], dtype=np.float)
+        else:
+            grey_pos = np.array([[self.conf['colorMap']['orangeSide']['greyY'],
+                                  self.conf['colorMap']['orangeSide']['greyX'],
+                                  0]], dtype=np.float)
+        return grey_pos
+
+    def load_config(self, conf_path, colors_path):
+        with open(conf_path, 'r') as stream:
+            conf = yaml.load(stream)
+
+        with open(colors_path, 'r') as stream:
+            conf_colors = yaml.load(stream)
+
+        cam_arr = np.array(conf['camera']['cameraMatrix'])
+        cam_arr = cam_arr.reshape(3, 3)
+        conf['camera']['cameraMatrix'] = cam_arr
+
+        cam_dist = np.array(conf['camera']['distCoeffs'])
+        conf['camera']['distCoeffs'] = cam_dist
+
+        return conf, conf_colors
+
+    def detect_aruco(self, im):
+        aruco_dict = aruco.Dictionary_get(self.aruco_dict)
+        param = aruco.DetectorParameters_create()
+
+        corners, ids, _ = aruco.detectMarkers(im, aruco_dict, parameters=param)
+
+        sel_id = np.argwhere(ids == self.aruco_id)
+        if sel_id.shape[0]:
+            idx = sel_id[0][0]
+
+            corners = [corners[idx]]
+            rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners,
+                                                                  self.aruco_height,
+                                                                  self.cameraMatrix,
+                                                                  self.distCoeffs)
+        else:
+            corners, rvecs, tvecs = None, None, None
+
+        return corners, rvecs, tvecs
+
+    def drawAruco(self, im, corners, rvecs, tvecs):
+        im = aruco.drawDetectedMarkers(im.copy(), corners)
+        aruco.drawAxis(im, self.cameraMatrix, self.distCoeffs,
+                       rvecs[0, ...], tvecs[0, ...], 20)
+        return im
 
     def process(self, im):
-        corners, rvecs, tvecs = detect_aruco(
-            im, aruco.DICT_6X6_250,
-            self.conf['ArUco'],
-            self.cameraMatrix,
-            self.distCoeffs)
+        corners, rvecs, tvecs = self.detect_aruco(im)
 
         if corners is None:
             return []
 
-        pts, _ = cv2.projectPoints(self.points, rvecs, tvecs,
+        if np.sign(np.squeeze(rvecs / np.linalg.norm(rvecs))[0]) > 0:
+            self.playing_side = PlayingSide.ORANGE
+        else:
+            self.playing_side = PlayingSide.GREEN
+
+        pts, _ = cv2.projectPoints(self.get_colormap_pts(), rvecs, tvecs,
                                    self.cameraMatrix, self.distCoeffs)
         pts = np.rint(pts.squeeze()).astype(np.int)
 
-        greypos, _ = cv2.projectPoints(self.grey_pts, rvecs, tvecs,
+        greypos, _ = cv2.projectPoints(self.get_grey_pts(), rvecs, tvecs,
                                        self.cameraMatrix, self.distCoeffs)
         greypos = np.rint(greypos.squeeze()).astype(np.int)
         grey = pick_color(im, greypos[0], greypos[1], 3)
@@ -208,10 +173,12 @@ class planReader():
         im_proc8 = lut(im_proc7)
 
         if self.debug:
+            im_aruco = self.drawAruco(im, corners, rvecs, tvecs)
+
             debug_writefiles(self.debugpath, im,  pts, greypos,
                              im_proc1, im_proc2, im_proc3,
                              im_proc4, im_proc5, im_proc6,
-                             im_proc7, im_proc8)
+                             im_proc7, im_proc8, im_aruco)
 
         color_blobs = find_class_center(im_proc7, self.colors_util.idx2color,
                                         im_proc8)

@@ -72,3 +72,12 @@ def _color_define_curve(mean, comp):
 
 def _color_corr_factor(val, f):
     return f(val / 255)
+
+
+def crop_on_color_map(im, pts, width, height):
+    pts_proj = np.float32([[width, 0], [0, 0], [0, height], [width, height]])
+
+    M = cv2.getPerspectiveTransform(pts.astype(np.float32), pts_proj)
+
+    dst = cv2.warpPerspective(im, M, (width, height))
+    return dst

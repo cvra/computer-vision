@@ -24,14 +24,21 @@ process:
   winHeight: 11
 
 ArUco:
+  dict: 10
   height: 14.2
   id: 2
 
 colorMap:
   areaHeight: 12
   areaWidth: 25
-  areaY: -85
-  areaX: -8
-  greyY: -85
-  greyX: 15
+  greenSide:
+    areaY: -87
+    areaX: -9
+    greyY: -87
+    greyX: 13
+  orangeSide:
+    areaY: -88
+    areaX: 10
+    greyY: -87
+    greyX: -13
 
