@@ -1,35 +1,78 @@
-import time
+import argparse
+import logging
+import os
+import sys
+from time import gmtime, strftime
+
 import picamera
 import picamera.array
+import serial
 
-from time import gmtime, strftime
+from error_correction import error_correction
 from planReader.planReader import planReader
 
+def time_str():
+    return strftime("%a, %d %b %Y %H:%M:%S", gmtime())
 
-plan = planReader(config_path='conf.yaml',
-                  config_color='colors.yaml', debug=False)
+VALID_COLORS = {'Black':'K', 'Yellow':'Y', 'Orange':'O', 'Blue':'B', 'Green':'G'}
 
-with picamera.PiCamera() as camera:
+def parse_arguments():
+    parser = argparse.ArgumentParser(description=__doc__)
+
+    parser.add_argument('--port', '-p', help='Serial port the results are streamed to', default='/dev/serial0')
+    parser.add_argument('--baudrate', '-b', type=int, help='Baudrate over serial port', default=19200)
+    parser.add_argument('--logfile', '-l', help='Output log file')
+
+    return parser.parse_args()
+
+def main():
+    args = parse_arguments()
+
+    if args.logfile:
+        logging.basicConfig(filename=args.logfile, level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    ser = serial.Serial(args.port, args.baudrate)
+    logging.info('Serial port {} ready for streaming results'.format(ser.name))
+
+    camera = picamera.PiCamera()
     camera.vflip = True
     camera.hflip = True
     camera.resolution = (3280//2, 2464//2)
 
-    print('{}: Start'.format(strftime("%a, %d %b %Y %H:%M:%S",
-                                      gmtime())))
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    config_file = os.path.join(current_dir, 'conf.yaml')
+    colors_file = os.path.join(current_dir, 'colors.yaml')
+    plan = planReader(config_path=config_file,
+                      config_color=colors_file, debug=False)
 
+    logging.info('{}: Start'.format(time_str()))
     while(True):
-        with picamera.array.PiRGBArray(camera) as stream:
-            print('{}: Grab Image'.format(
-                strftime("%a, %d %b %Y %H:%M:%S", gmtime())))
+        try:
+            stream = picamera.array.PiRGBArray(camera)
+            logging.info('{}: Grab Image'.format(time_str()))
             camera.capture(stream, format='rgb', use_video_port=True)
-
-            print('{}: Load Image'.format(
-                strftime("%a, %d %b %Y %H:%M:%S", gmtime())))
             im = stream.array
 
-            print('{}: Process Image'.format(
-                strftime("%a, %d %b %Y %H:%M:%S", gmtime())))
+            logging.info('{}: Process Image'.format(time_str()))
             color_plan = plan.process(im)
 
-            print('{}: Output {}'.format(
-                strftime("%a, %d %b %Y %H:%M:%S", gmtime()), color_plan))
+            logging.info('{}: Output {}'.format(time_str(), color_plan))
+
+            if len(color_plan) == 3:
+                sequences, distance = error_correction(color_plan)
+                logging.info('{}: Closest valid sequence {} that was {} color away from prediction'.format(time_str(), sequences[0], distance))
+
+                compact_res = ''.join(VALID_COLORS[color] for color in sequences[0]) + '\n'
+                ser.write(compact_res.encode())
+                logging.info('UART stream: {}'.format(compact_res))
+            else:
+                logging.warning('Invalid color sequence detected {} does not contain exactly 3 colors'.format(color_plan))
+        except KeyboardInterrupt:
+            logging.info('Exiting program after Ctrl-C')
+            ser.close()
+            sys.exit()
+
+if __name__ == '__main__':
+    main()
