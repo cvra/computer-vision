@@ -78,20 +78,21 @@ class planReader():
         areaHeight = self.conf['colorMap']['areaHeight']
         areaWidth = self.conf['colorMap']['areaWidth']
 
-        return np.array([[areaY - areaHeight / 2, areaX - areaWidth / 2, 0],
-                         [areaY - areaHeight / 2, areaX + areaWidth / 2, 0],
-                         [areaY + areaHeight / 2, areaX + areaWidth / 2, 0],
-                         [areaY + areaHeight / 2, areaX - areaWidth / 2, 0]],
+        return np.array([[areaX + areaWidth / 2, areaY + areaHeight / 2, 0],
+                         [areaX - areaWidth / 2, areaY + areaHeight / 2, 0],
+                         [areaX - areaWidth / 2, areaY - areaHeight / 2, 0],
+                         [areaX + areaWidth / 2, areaY - areaHeight / 2, 0]],
                         dtype=np.float)
+
 
     def get_grey_pts(self):
         if self.playing_side == PlayingSide.GREEN:
-            grey_pos = np.array([[self.conf['colorMap']['greenSide']['greyY'],
-                                  self.conf['colorMap']['greenSide']['greyX'],
+            grey_pos = np.array([[self.conf['colorMap']['greenSide']['greyX'],
+                                  self.conf['colorMap']['greenSide']['greyY'],
                                   0]], dtype=np.float)
         else:
-            grey_pos = np.array([[self.conf['colorMap']['orangeSide']['greyY'],
-                                  self.conf['colorMap']['orangeSide']['greyX'],
+            grey_pos = np.array([[self.conf['colorMap']['orangeSide']['greyX'],
+                                  self.conf['colorMap']['orangeSide']['greyY'],
                                   0]], dtype=np.float)
         return grey_pos
 
