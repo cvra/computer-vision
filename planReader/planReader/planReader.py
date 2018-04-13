@@ -161,13 +161,10 @@ class planReader():
             return []
 
         rot_mat = cv2.Rodrigues(rvecs)[0]
-        print(rot_mat)
         if np.sign(rot_mat[0, 2]) > 0:
             self.playing_side = PlayingSide.ORANGE
-            print('playing ORANGE')
         else:
             self.playing_side = PlayingSide.GREEN
-            print('playing GREEN')
 
         pts, _ = cv2.projectPoints(self.get_colormap_pts(), rvecs, tvecs,
                                    self.cameraMatrix, self.distCoeffs)
