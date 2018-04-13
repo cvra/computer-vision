@@ -12,8 +12,7 @@ class Colors():
             self.idx2color[idx] = color
 
         samples_train, labels_train = self._generate_dataset()
-
-        self.model = KNearest(k=3)
+        self.model = KNearest(k=2)
         self.model.train(samples_train, labels_train)
 
     def _generate_dataset(self):
