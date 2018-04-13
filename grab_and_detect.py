@@ -2,7 +2,12 @@ import argparse
 import logging
 import os
 import sys
+
+import time
 from time import gmtime, strftime
+import uuid
+import os
+import cv2
 
 import picamera
 import picamera.array
@@ -27,6 +32,9 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
+
+    folder = os.path.join('/home/pi/computer-vision', uuid.uuid4().hex)
+    os.mkdir(folder)
 
     if args.logfile:
         logging.basicConfig(filename=args.logfile, level=logging.INFO)
@@ -69,6 +77,9 @@ def main():
                 logging.info('UART stream: {}'.format(compact_res))
             else:
                 logging.warning('Invalid color sequence detected {} does not contain exactly 3 colors'.format(color_plan))
+        
+            name = os.path.join(folder, strftime('%Y%m%d_%H_%M_%S.png', gmtime()))
+            cv2.imwrite(name, cv2.cvtColor(im, cv2.COLOR_RGB2BGR))
         except KeyboardInterrupt:
             logging.info('Exiting program after Ctrl-C')
             ser.close()
