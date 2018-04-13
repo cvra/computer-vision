@@ -40,8 +40,10 @@ def debug_writefiles(path, im,  pts, greypos,
     cv2.imwrite(join(path, 'out3.png'), cv2.cvtColor(np.vstack([im_proc1, im_proc2,
                                                                 im_proc3, im_proc4]),
                                                      cv2.COLOR_RGB2BGR))
-    cv2.imwrite(join(path, 'out4.png'), np.vstack(
-        [im_proc5, im_proc6, im_proc7]))
+    ims_grey = np.vstack([im_proc5, im_proc6, im_proc7])
+    ims_grey = np.rint(ims_grey * 256 / np.max(ims_grey)).astype(np.uint8)
+    ims_grey = np.repeat(ims_grey[:,:,np.newaxis], 3, axis=2)
+    cv2.imwrite(join(path, 'out4.png'), ims_grey)
     cv2.imwrite(join(path, 'out5.png'), cv2.cvtColor(
         im_proc8, cv2.COLOR_RGB2BGR))
 
