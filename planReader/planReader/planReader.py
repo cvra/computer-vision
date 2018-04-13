@@ -7,17 +7,17 @@ import cv2.aruco as aruco
 from os.path import join
 
 from .colorsUtils import norm_colors, \
-                         improve_colors, \
-                         pick_color, \
-                         crop_on_color_map
+    improve_colors, \
+    pick_color, \
+    crop_on_color_map
 from .colorsSegm import Colors
 from .drawingUtils import draw_points, lut
 from .drawingUtils import draw_points, lut
 
 from .colorsLabel import keep_color, \
-                         clean_label, \
-                         find_colors, \
-                         find_class_center
+    clean_label, \
+    find_colors, \
+    find_class_center
 from enum import Enum
 
 
@@ -84,7 +84,6 @@ class planReader():
                          [areaX + areaWidth / 2, areaY - areaHeight / 2, 0]],
                         dtype=np.float)
 
-
     def get_grey_pts(self):
         if self.playing_side == PlayingSide.GREEN:
             grey_pos = np.array([[self.conf['colorMap']['greenSide']['greyX'],
@@ -113,6 +112,13 @@ class planReader():
         return conf, conf_colors
 
     def detect_aruco(self, im):
+
+        def estimatePoseSingleMarkers(corners):
+            return cv2.aruco.estimatePoseSingleMarkers(corners,
+                                                       self.aruco_height,
+                                                       self.cameraMatrix,
+                                                       self.distCoeffs)
+
         aruco_dict = aruco.Dictionary_get(self.aruco_dict)
         param = aruco.DetectorParameters_create()
 
@@ -123,10 +129,20 @@ class planReader():
             idx = sel_id[0][0]
 
             corners = [corners[idx]]
-            rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners,
-                                                                  self.aruco_height,
-                                                                  self.cameraMatrix,
-                                                                  self.distCoeffs)
+
+            rvecs, tvecs, _ = estimatePoseSingleMarkers(corners)
+
+            # The AruCo module in OpenCV have singularity that lead to
+            # a wrong orientation estimation. We detect and correct these
+            # using the knowledge we have about the possible position.
+            rot_mat = cv2.Rodrigues(rvecs)[0]
+            if np.sign(rot_mat[0, 1]) < 0 and np.sign(rot_mat[0, 2]) > 0:
+                corners[idx][0][0] += 1
+                rvecs, tvecs, _ = estimatePoseSingleMarkers(corners)
+            elif np.sign(rot_mat[0, 1]) > 0 and np.sign(rot_mat[0, 2]) < 0:
+                corners[idx][0][1] += np.array([-1, +1])
+                rvecs, tvecs, _ = estimatePoseSingleMarkers(corners)
+
         else:
             corners, rvecs, tvecs = None, None, None
 
@@ -144,10 +160,14 @@ class planReader():
         if corners is None:
             return []
 
-        if np.sign(np.squeeze(rvecs / np.linalg.norm(rvecs))[0]) > 0:
+        rot_mat = cv2.Rodrigues(rvecs)[0]
+        print(rot_mat)
+        if np.sign(rot_mat[0, 2]) > 0:
             self.playing_side = PlayingSide.ORANGE
+            print('playing ORANGE')
         else:
             self.playing_side = PlayingSide.GREEN
+            print('playing GREEN')
 
         pts, _ = cv2.projectPoints(self.get_colormap_pts(), rvecs, tvecs,
                                    self.cameraMatrix, self.distCoeffs)
