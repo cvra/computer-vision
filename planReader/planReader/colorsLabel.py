@@ -1,4 +1,5 @@
 import cv2
+import random
 import numpy as np
 
 from sklearn import mixture
@@ -54,6 +55,12 @@ def find_class_center(im_label, idx2color, im=None):
             break
 
         X = np.vstack(np.where(mask == 1)).T.astype(np.float)
+
+        # Reduce the number of sample to avoid
+        # a crash on the raspi zero
+        if X.shape[0] > 200:
+            X = X[np.random.randint(X.shape[0], size=200), :]
+
         gmm = mixture.GaussianMixture(
             n_components=1, covariance_type='diag', max_iter=100,).fit(X)
 
