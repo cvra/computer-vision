@@ -30,15 +30,15 @@ ArUco:
 
 colorMap:
   areaHeight: 12
-  areaWidth: 25
+  areaWidth: 27
   greenSide:
-    areaY: -87
-    areaX: -9
-    greyY: -87
-    greyX: 13
+    areaY: -89
+    areaX: -11
+    greyY: -89
+    greyX: 10
   orangeSide:
-    areaY: -88
+    areaY: -89
     areaX: 10
-    greyY: -87
-    greyX: -13
+    greyY: -89
+    greyX: -10
 
