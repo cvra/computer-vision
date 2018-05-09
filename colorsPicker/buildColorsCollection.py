@@ -74,6 +74,35 @@ def mergedict(source, dest):
     return dest
 
 
+def buildColorsCollection(im_foler, colors_conf, out_filepath):
+
+    colorset = dict()
+
+    im_size = colors_conf['IM_SIZE']
+
+    for filename, colors in colors_conf['Images'].items():
+        is_empty = True
+
+        for colorname, colorlist in colors.items():
+            if colorlist:
+                is_empty = False
+
+        if not is_empty:
+            colors = extract_colors(im_foler, filename,
+                                    im_size, colors, WINDOW_SIZE)
+            colorset = mergedict(colors, colorset)
+
+    out_dict = dict()
+    out_dict['colorsGroup'] = colorset
+
+    color_idx = {'Other': 0, 'Blue': 1, 'Green': 2,
+                 'Yellow': 3, 'Orange': 4, 'Black': 5, 'Grey': 6}
+    out_dict['color_idx'] = color_idx
+
+    with open(out_filepath, 'w') as f:
+        yaml.dump(out_dict, f, default_flow_style=False)
+
+
 def main():
     args = parse_args()
 
