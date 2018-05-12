@@ -68,11 +68,12 @@ def main():
 
             logging.info('{}: Output {}'.format(time_str(), color_plan))
 
-            if len(color_plan) == 3:
-                sequences, distance = error_correction(color_plan)
-                logging.info('{}: Closest valid sequence {} that was {} color away from prediction'.format(time_str(), sequences[0], distance))
+            sequence, distance = error_correction(color_plan)
+            
+            logging.info('{}: Closest valid sequence {} that was {} color away from prediction'.format(time_str(), sequence, distance))
 
-                compact_res = '@' + ''.join(VALID_COLORS[color] for color in sequences[0]) + '\n'
+            if sequence:
+                compact_res = '@' + ''.join(VALID_COLORS[color] for color in sequence) + '\n'
                 ser.write(compact_res.encode())
                 logging.info('UART stream: {}'.format(compact_res))
             else:
